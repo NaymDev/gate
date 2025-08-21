@@ -86,10 +86,16 @@ func newInitialPing(p *Proxy, protocol proto.Protocol) *ping.ServerPing {
 	if p.cfg.AnnounceForge {
 		modInfo = modinfo.Default
 	}
+
+	vn := versionName
+	if p.cfg.Status.VersionName != nil {
+		vn = *p.cfg.Status.VersionName
+	}
+
 	return &ping.ServerPing{
 		Version: ping.Version{
 			Protocol: protocol,
-			Name:     versionName,
+			Name:     vn,
 		},
 		Players: &ping.Players{
 			Online: p.PlayerCount(),

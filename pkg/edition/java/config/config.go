@@ -130,6 +130,7 @@ type (
 		Motd            *configutil.TextComponent `yaml:"motd"`
 		Favicon         favicon.Favicon           `yaml:"favicon"`
 		LogPingRequests bool                      `yaml:"logPingRequests"`
+		VersionName     *string                   `yaml:"versionName,omitempty"` // If set, overrides the version name in the status response.
 	}
 	Query struct {
 		Enabled     bool `yaml:"enabled"`
