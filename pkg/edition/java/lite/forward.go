@@ -9,6 +9,7 @@ import (
 	"io"
 	"net"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -26,6 +27,13 @@ import (
 	"golang.org/x/sync/singleflight"
 )
 
+// IsConnectionRefused returns true if err indicates a connection refused error.
+// These errors are common when backends are down and should use debug logging.
+func IsConnectionRefused(err error) bool {
+	return err != nil && (errors.Is(err, syscall.ECONNREFUSED) ||
+		strings.Contains(strings.ToLower(err.Error()), "connection refused"))
+}
+
 // Forward forwards a client connection to a matching backend route.
 func Forward(
 	dialTimeout time.Duration,
@@ -34,17 +42,18 @@ func Forward(
 	client netmc.MinecraftConn,
 	handshake *packet.Handshake,
 	pc *proto.PacketContext,
+	strategyManager *StrategyManager,
 ) {
 	defer func() { _ = client.Close() }()
 
-	log, src, route, nextBackend, err := findRoute(routes, log, client, handshake)
+	log, src, route, nextBackend, err := findRoute(routes, log, client, handshake, strategyManager)
 	if err != nil {
 		errs.V(log, err).Info("failed to find route", "error", err)
 		return
 	}
 
 	// Find a backend to dial successfully.
-	log, dst, err := tryBackends(nextBackend, func(log logr.Logger, backendAddr string) (logr.Logger, net.Conn, error) {
+	backendAddr, log, dst, err := tryBackends(nextBackend, func(log logr.Logger, backendAddr string) (logr.Logger, net.Conn, error) {
 		conn, err := dialRoute(client.Context(), dialTimeout, src.RemoteAddr(), route, backendAddr, handshake, pc, false)
 		return log, conn, err
 	})
@@ -58,7 +67,14 @@ func Forward(
 		return
 	}
 
-	log.Info("forwarding connection", "backendAddr", netutil.Host(dst.RemoteAddr()))
+	// Track connection for least-connections strategy
+	var decrementConnection func()
+	if route.Strategy == config.StrategyLeastConnections {
+		decrementConnection = strategyManager.IncrementConnection(backendAddr)
+		defer decrementConnection()
+	}
+
+	log.Info("forwarding connection", "backendAddr", backendAddr)
 	pipe(log, src, dst)
 }
 
@@ -66,12 +82,12 @@ func Forward(
 var errAllBackendsFailed = errors.New("all backends failed")
 
 // tryBackends tries backends until one succeeds or all fail.
-func tryBackends[T any](next nextBackendFunc, try func(log logr.Logger, backendAddr string) (logr.Logger, T, error)) (logr.Logger, T, error) {
+func tryBackends[T any](next nextBackendFunc, try func(log logr.Logger, backendAddr string) (logr.Logger, T, error)) (string, logr.Logger, T, error) {
 	for {
 		backendAddr, log, ok := next()
 		if !ok {
 			var zero T
-			return log, zero, errAllBackendsFailed
+			return backendAddr, log, zero, errAllBackendsFailed
 		}
 
 		log, t, err := try(log, backendAddr)
@@ -79,7 +95,7 @@ func tryBackends[T any](next nextBackendFunc, try func(log logr.Logger, backendA
 			errs.V(log, err).Info("failed to try backend", "error", err)
 			continue
 		}
-		return log, t, nil
+		return backendAddr, log, t, nil
 	}
 }
 
@@ -125,6 +141,7 @@ func findRoute(
 	log logr.Logger,
 	client netmc.MinecraftConn,
 	handshake *packet.Handshake,
+	strategyManager *StrategyManager,
 ) (
 	newLog logr.Logger,
 	src net.Conn,
@@ -160,21 +177,40 @@ func findRoute(
 		if len(tryBackends) == 0 {
 			return "", log, false
 		}
-		// Pop first backend
-		backend := tryBackends[0]
-		tryBackends = tryBackends[1:]
 
-		dstAddr, err := netutil.Parse(backend, src.RemoteAddr().Network())
-		if err != nil {
-			log.Info("failed to parse backend address", "wrongBackendAddr", backend, "error", err)
+		// Always use strategy manager (it handles empty strategy as sequential default)
+		backendAddr, newLog, ok := strategyManager.GetNextBackend(log, route, host, tryBackends)
+		if !ok {
 			return "", log, false
 		}
-		backendAddr := dstAddr.String()
-		if _, port := netutil.HostPort(dstAddr); port == 0 {
-			backendAddr = net.JoinHostPort(dstAddr.String(), "25565")
+
+		// Remove selected backend from list to avoid retrying it
+		for i, backend := range tryBackends {
+			normalizedBackend, err := netutil.Parse(backend, src.RemoteAddr().Network())
+			if err != nil {
+				continue
+			}
+			normalizedAddr := normalizedBackend.String()
+			if _, port := netutil.HostPort(normalizedBackend); port == 0 {
+				normalizedAddr = net.JoinHostPort(normalizedBackend.String(), "25565")
+			}
+
+			normalizedSelected, err := netutil.Parse(backendAddr, src.RemoteAddr().Network())
+			if err != nil {
+				continue
+			}
+			selectedAddr := normalizedSelected.String()
+			if _, port := netutil.HostPort(normalizedSelected); port == 0 {
+				selectedAddr = net.JoinHostPort(normalizedSelected.String(), "25565")
+			}
+
+			if normalizedAddr == selectedAddr {
+				tryBackends = append(tryBackends[:i], tryBackends[i+1:]...)
+				break
+			}
 		}
 
-		return backendAddr, log.WithValues("backendAddr", backendAddr), true
+		return backendAddr, newLog.WithValues("backendAddr", backendAddr), true
 	}
 
 	return log, src, route, nextBackend, nil
@@ -199,6 +235,11 @@ func dialRoute(
 		v := 0
 		if dialCtx.Err() != nil {
 			v++
+		}
+		// Treat connection refused as debug level to reduce spam
+		// These are common when backends are down and should not flood logs
+		if IsConnectionRefused(err) {
+			v = 1
 		}
 		return nil, &errs.VerbosityError{
 			Verbosity: v,
@@ -273,35 +314,67 @@ func ResolveStatusResponse(
 	handshake *packet.Handshake,
 	handshakeCtx *proto.PacketContext,
 	statusRequestCtx *proto.PacketContext,
+	strategyManager *StrategyManager,
 ) (logr.Logger, *packet.StatusResponse, error) {
-	log, src, route, nextBackend, err := findRoute(routes, log, client, handshake)
+	log, src, route, nextBackend, err := findRoute(routes, log, client, handshake, strategyManager)
 	if err != nil {
 		return log, nil, err
 	}
 
-	log, res, err := tryBackends(nextBackend, func(log logr.Logger, backendAddr string) (logr.Logger, *packet.StatusResponse, error) {
-		return resolveStatusResponse(src, dialTimeout, backendAddr, route, log, client, handshake, handshakeCtx, statusRequestCtx)
-	})
-	if err != nil && route.Fallback != nil {
-		log.Info("failed to resolve status response, will use fallback status response", "error", err)
+	_, log, res, err := tryBackends(nextBackend, func(log logr.Logger, backendAddr string) (logr.Logger, *packet.StatusResponse, error) {
+		// Measure status response time for latency tracking (better than dial time)
+		start := time.Now()
+		newLog, response, respErr := resolveStatusResponse(src, dialTimeout, backendAddr, route, log, client, handshake, handshakeCtx, statusRequestCtx)
+		statusLatency := time.Since(start)
 
-		// Fallback status response if configured
-		fallbackPong, err := route.Fallback.Response(handshakeCtx.Protocol)
-		if err != nil {
-			log.Info("failed to get fallback status response", "error", err)
+		// Record latency for lowest-latency strategy (only on success)
+		if respErr == nil {
+			strategyManager.RecordLatency(backendAddr, statusLatency)
 		}
-		if fallbackPong != nil {
-			status, err2 := json.Marshal(fallbackPong)
-			if err2 != nil {
-				return log, nil, fmt.Errorf("%w: failed to marshal fallback status response: %w", err, err2)
-			}
-			if log.V(1).Enabled() {
-				log.V(1).Info("using fallback status response", "status", string(status))
-			}
-			return log, &packet.StatusResponse{Status: string(status)}, nil
+
+		return newLog, response, respErr
+	})
+
+	// Handle fallback if all backends failed
+	if err != nil {
+		fallbackResp, fallbackLog := handleFallbackResponse(log, route, handshakeCtx.Protocol, err)
+		if fallbackResp != nil {
+			return fallbackLog, fallbackResp, nil
 		}
 	}
+
 	return log, res, err
+}
+
+// handleFallbackResponse handles the fallback response when all backends fail.
+// This is extracted for better testability.
+func handleFallbackResponse(log logr.Logger, route *config.Route, protocol proto.Protocol, backendErr error) (*packet.StatusResponse, logr.Logger) {
+	if route == nil || route.Fallback == nil {
+		return nil, log
+	}
+
+	log.Info("failed to resolve status response, will use fallback status response", "error", backendErr)
+
+	// Fallback status response if configured
+	fallbackPong, err := route.Fallback.Response(protocol)
+	if err != nil {
+		log.Info("failed to get fallback status response", "error", err)
+		return nil, log
+	}
+
+	if fallbackPong != nil {
+		status, err2 := json.Marshal(fallbackPong)
+		if err2 != nil {
+			log.Error(err2, "failed to marshal fallback status response")
+			return nil, log
+		}
+		if log.V(1).Enabled() {
+			log.V(1).Info("using fallback status response", "status", string(status))
+		}
+		return &packet.StatusResponse{Status: string(status)}, log
+	}
+
+	return nil, log
 }
 
 var (
@@ -412,9 +485,25 @@ func fetchStatus(
 	dec.SetProtocol(protocol)
 	dec.SetState(state.Status)
 
+	return decodeStatusResponse(dec)
+}
+
+// statusDecoder interface for decoding status responses (allows mocking in tests)
+type statusDecoder interface {
+	Decode() (*proto.PacketContext, error)
+}
+
+// decodeStatusResponse decodes a status response from the decoder, handling the
+// ErrDecoderLeftBytes error that can occur when mods like BetterCompatibilityChecker
+// add extra data to the status response packet.
+func decodeStatusResponse(dec statusDecoder) (*packet.StatusResponse, error) {
 	pongCtx, err := dec.Decode()
-	if err != nil {
+	if err != nil && !errors.Is(err, proto.ErrDecoderLeftBytes) {
 		return nil, fmt.Errorf("failed to decode status response: %w", err)
+	}
+	// If we got ErrDecoderLeftBytes, pongCtx should still be valid
+	if pongCtx == nil {
+		return nil, fmt.Errorf("failed to decode status response: got nil packet context")
 	}
 
 	res, ok := pongCtx.Packet.(*packet.StatusResponse)

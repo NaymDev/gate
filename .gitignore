@@ -1,3 +1,6 @@
 .idea
 .yarn
 /.web/docs/.vitepress/cache
+tmp
+.geyser
+gate

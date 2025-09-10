@@ -1,7 +1,12 @@
+---
+title: 'Gate Minecraft Proxy Guide - Introduction & Setup'
+description: 'Complete guide to Gate Minecraft proxy. Learn how to set up, configure, and deploy Gate as a modern replacement for BungeeCord and Velocity with Bedrock cross-play support.'
+---
+
 # Introduction
 
 _Gate is a modern cloud-native, open source, fast, batteries-included and secure proxy for Minecraft servers
-that focuses on scalability, flexibility, multi-version support and developer friendliness._
+that focuses on scalability, flexibility, multi-version support, **cross-platform compatibility**, and developer friendliness._
 
 ---
 
@@ -62,6 +67,18 @@ Ready to jump in? Choose your path:
     </div>
   </div>
 
+  <a href="/guide/bedrock" class="feature-card" style="text-decoration: none; color: inherit;">
+    <div class="card-content">
+      <h3>📱 Cross-Platform Support</h3>
+      <ul>
+        <li>Java Edition (PC) players</li>
+        <li>Bedrock Edition (Mobile, Console, Win)</li>
+        <li>Built-in Geyser & Floodgate integration</li>
+        <li>Zero backend plugins required</li>
+      </ul>
+    </div>
+  </a>
+
   <div class="feature-card">
     <div class="card-content">
       <h3>🔍 Advanced Monitoring</h3>
@@ -80,6 +97,7 @@ Ready to jump in? Choose your path:
       <ul>
         <li>Minimal resource footprint (10MB RAM)</li>
         <li>Minecraft 1.7 to latest support</li>
+        <li>Built-in Bedrock cross-play</li>
         <li>Modern Go-based architecture</li>
         <li>Clean, documented APIs</li>
       </ul>

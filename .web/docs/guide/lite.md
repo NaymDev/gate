@@ -1,7 +1,9 @@
+---
+title: 'Gate Lite Mode - Lightweight Minecraft Proxy'
+description: 'Gate Lite is an ultra-lightweight Minecraft reverse proxy for host-based connection routing with minimal resource usage.'
+---
+
 # Gate Lite Mode
-
-
-## What is Lite mode?
 
 Gate has a `Lite` mode that makes Gate act as an ultra-thin lightweight reverse proxy between
 the client and the backend server for host based connection forwarding.
@@ -26,8 +28,10 @@ For each hostname, Gate will forward the player connection to the first matching
 [![Graph](/images/lite-mermaid-diagram-LR.svg)](https://gate.minekube.com)
 
 In this configuration, **Gate Lite** will route:
+
 - `Player Bob` -> `Backend A (10.0.0.1)`
--  `Player Alice` -> `Backend B (10.0.0.2)`
+- `Player Alice` -> `Backend B (10.0.0.2)`
+
 ```yaml config-lite.yml
 config:
   lite:
@@ -37,9 +41,100 @@ config:
         backend: 10.0.0.3:25568
       - host: '*.example.com'
         backend: 10.0.0.1:25567
-      - host: [ example.com, localhost ]
-        backend: [ 10.0.0.2:25566 ]
+      - host: [example.com, localhost]
+        backend: [10.0.0.2:25566]
 ```
+
+## Load Balancing Strategies
+
+When multiple backends are configured, Gate Lite can distribute connections using different strategies.
+
+:::: code-group
+
+```yaml [Sequential (Default)]
+lite:
+  routes:
+    - host: play.example.com
+      backend: [server1:25565, server2:25565, server3:25565]
+      # strategy: sequential # (default - can omit)
+```
+
+```yaml [Random]
+lite:
+  routes:
+    - host: play.example.com
+      backend: [server1:25565, server2:25565, server3:25565]
+      strategy: random
+```
+
+```yaml [Round-Robin]
+lite:
+  routes:
+    - host: lobby.example.com
+      backend: [lobby1:25565, lobby2:25565, lobby3:25565]
+      strategy: round-robin # Fair rotation: lobby1 → lobby2 → lobby3 → lobby1...
+```
+
+```yaml [Least-Connections]
+lite:
+  routes:
+    - host: game.example.com
+      backend: [game1:25565, game2:25565, game3:25565]
+      strategy: least-connections # Routes to server with fewest active players
+```
+
+```yaml [Lowest-Latency]
+lite:
+  routes:
+    - host: global.example.com
+      backend: [us:25565, eu:25565, asia:25565]
+      strategy: lowest-latency # Routes to fastest-responding server
+```
+
+```yaml [Mixed Strategies]
+lite:
+  routes:
+    # Simple random for lobby
+    - host: lobby.example.com
+      backend: [lobby1:25565, lobby2:25565]
+      strategy: random
+
+    # Performance-based for game servers
+    - host: survival.example.com
+      backend: [survival1:25565, survival2:25565, survival3:25565]
+      strategy: least-connections
+
+    # Latency-optimized for competitive
+    - host: pvp.example.com
+      backend: [pvp-us:25565, pvp-eu:25565, pvp-asia:25565]
+      strategy: lowest-latency
+```
+
+::::
+
+| Strategy                 | Description                    | Algorithm                       |
+| ------------------------ | ------------------------------ | ------------------------------- |
+| `sequential` **default** | Sequential backend order       | Tries backends in config order  |
+| `random`                 | Random backend selection       | Cryptographically secure random |
+| `round-robin`            | Sequential cycling             | Fair rotation per route         |
+| `least-connections`      | Routes to least-loaded backend | Real-time connection counting   |
+| `lowest-latency`         | Routes to fastest backend      | Status ping latency measurement |
+
+::: tip Performance Notes
+
+- **Immediate selection**: All strategies return instantly without health checks
+- **Natural failover**: Failed connections automatically retry next backend
+- **Latency measurement**: Uses status ping timing (not dial time) for accuracy
+- **Thread-safe**: Atomic operations for connection counting
+  :::
+
+### Behavior Examples
+
+**Round-Robin**: Connection 1 → lobby1, Connection 2 → lobby2, Connection 3 → lobby3, Connection 4 → lobby1...
+
+**Least-Connections**: Always routes to the backend with the fewest active players
+
+**Lowest-Latency**: Routes based on cached status ping measurements (3-minute cache)
 
 ## Ping Response Caching
 
@@ -60,7 +155,7 @@ config:
     enabled: true
     routes:
       - host: abc.example.com
-        backend: [ 10.0.0.3:25565, 10.0.0.4:25565 ]
+        backend: [10.0.0.3:25565, 10.0.0.4:25565]
         cachePingTTL: 3m # or 180s // [!code ++]
 ```
 
@@ -73,6 +168,7 @@ Note that routes can configure multiple random backends and each backend has its
 Setting the TTL to `-1s` disables response caching for this route only.
 
 ::: code-group
+
 ```yaml [config.yml]
 config:
   lite:
@@ -82,6 +178,7 @@ config:
         backend: 10.0.0.3:25568
         cachePingTTL: -1s // [!code ++]
 ```
+
 :::
 
 ## Fallback status for offline backends
@@ -90,6 +187,7 @@ If all backends of a route are unreachable, Gate Lite will return a fallback sta
 You can utilize all available status fields to customize the response. (See full sample config below.)
 
 ::: code-group
+
 ```yaml [config.yml]
 config:
   lite:
@@ -107,8 +205,9 @@ config:
             name: '§cTry again later!'
             protocol: -1
 ```
+
 :::
-          
+
 ## Modify virtual host
 
 Modifies the virtual host to match the backend address in the handshake request.
@@ -118,6 +217,7 @@ prevent players from using third party domains.
 To work around this limitation, simply enable this on your route:
 
 ::: code-group
+
 ```yaml [config.yml]
 config:
   lite:
@@ -127,6 +227,7 @@ config:
         backend: play.example.com
         modifyVirtualHost: true // [!code ++]
 ```
+
 :::
 
 Lite will modify the player's handshake packet's virtual host field from `localhost` -> `play.example.com`
@@ -137,9 +238,11 @@ before forwarding the connection to the backend.
 The Lite configuration is located in the same Gate `config.yml` file under `lite`.
 
 ::: code-group
+
 ```yaml [config-lite.yml on GitHub]
 <!--@include: ../../../config-lite.yml -->
 ```
+
 :::
 
 ## Proxy behind proxy

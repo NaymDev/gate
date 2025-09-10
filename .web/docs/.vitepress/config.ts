@@ -1,4 +1,4 @@
-import { defineConfig } from 'vitepress';
+import { defineConfig, HeadConfig } from 'vitepress';
 
 import {
   additionalTitle,
@@ -22,13 +22,21 @@ export default defineConfig({
     hostname: ogUrl,
   },
 
+  transformHead: ({ pageData }) => {
+    const description = pageData.frontmatter.description || ogDescription;
+    const title = pageData.frontmatter.title || pageData.title || ogTitle;
+    return [
+      ['meta', { name: 'description', content: description }],
+      ['meta', { property: 'og:description', content: description }],
+      ['meta', { property: 'og:title', content: title }],
+    ];
+  },
+
   head: [
     ['link', { rel: 'icon', type: 'image/png', href: '/favicon.png' }],
     ['meta', { property: 'og:type', content: 'website' }],
-    ['meta', { property: 'og:title', content: ogTitle }],
     ['meta', { property: 'og:image', content: ogImage }],
     ['meta', { property: 'og:url', content: ogUrl }],
-    ['meta', { property: 'og:description', content: ogDescription }],
     ['meta', { name: 'theme-color', content: '#646cff' }],
     // [
     //     'script',
@@ -84,9 +92,10 @@ export default defineConfig({
 
     nav: [
       { text: 'Guide', link: '/guide/' },
-      { text: 'Lite mode', link: '/guide/lite' },
+      { text: 'Bedrock', link: '/guide/bedrock' },
+      { text: 'Lite Mode', link: '/guide/lite' },
+      { text: 'API & SDKs', link: '/developers/api/' },
       { text: 'Developers', link: '/developers/' },
-      { text: 'API', link: '/developers/api/' },
       { text: 'Config', link: '/guide/config/' },
       { text: 'Downloads', link: '/guide/install/' },
       { text: 'Extensions', link: '/extensions' },
@@ -112,7 +121,7 @@ export default defineConfig({
           ],
         },
         {
-          text: 'Installation',
+          text: '📦 Installation',
           items: [
             {
               text: 'Prebuilt Binaries',
@@ -133,23 +142,48 @@ export default defineConfig({
           ],
         },
         {
-          text: 'Guides',
+          text: 'Core Features',
           items: [
             {
-              text: 'Lite mode',
+              text: '🎮 Bedrock Support',
+              link: '/guide/bedrock',
+            },
+            {
+              text: '⚡ Lite Mode',
               link: '/guide/lite',
             },
             {
-              text: 'Developers Guide',
+              text: '🔧 Modded Servers',
+              link: '/guide/modded-servers',
+            },
+            {
+              text: '🔗 Compatibility',
+              link: '/guide/compatibility',
+            },
+          ],
+        },
+        {
+          text: 'Developers & API',
+          items: [
+            {
+              text: '👨‍💻 Developers Guide',
               link: '/developers/',
             },
             {
-              text: 'HTTP API',
+              text: '🚀 API & SDKs',
               link: '/developers/api/',
             },
             {
-              text: 'Compatibility',
-              link: '/guide/compatibility',
+              text: '📚 Events',
+              link: '/developers/events',
+            },
+            {
+              text: '⚡ Commands',
+              link: '/developers/commands',
+            },
+            {
+              text: '💡 Examples',
+              link: '/developers/examples/simple-proxy',
             },
           ],
         },
@@ -157,24 +191,32 @@ export default defineConfig({
           text: 'Configuration',
           items: [
             {
-              text: 'Enabling Connect',
-              link: '/guide/connect',
-            },
-            {
-              text: 'Complete Configuration',
+              text: '📋 Complete Configuration',
               link: '/guide/config/',
             },
             {
-              text: 'Auto Reload',
+              text: '🔄 Auto Reload',
               link: '/guide/config/reload',
             },
             {
-              text: 'Builtin Commands',
+              text: '⚙️ Builtin Commands',
               link: '/guide/builtin-commands',
             },
             {
-              text: 'Rate Limiting',
+              text: '🛡️ Rate Limiting',
               link: '/guide/rate-limiting',
+            },
+            {
+              text: '🌐 Enabling Connect',
+              link: '/guide/connect',
+            },
+            {
+              text: '🔧 Modded Servers Config',
+              link: '/guide/config/modded-servers',
+            },
+            {
+              text: '🌐 ForcedHosts Routing',
+              link: '/guide/forced-hosts',
             },
           ],
         },
@@ -241,6 +283,10 @@ export default defineConfig({
             {
               text: 'Events',
               link: '/developers/events',
+            },
+            {
+              text: 'Commands',
+              link: '/developers/commands',
             },
           ],
         },

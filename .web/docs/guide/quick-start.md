@@ -1,3 +1,46 @@
+---
+title: 'Gate Minecraft Proxy Quick Start Guide'
+description: 'Get started with Gate Minecraft proxy in minutes. Step-by-step installation, configuration, and setup guide for BungeeCord/Velocity replacement with Bedrock support.'
+
+head:
+  - - meta
+    - name: description
+      content: 'Get started with Gate Minecraft proxy in minutes. Step-by-step installation, configuration, and setup guide for BungeeCord/Velocity replacement with Bedrock support.'
+  - - meta
+    - name: keywords
+      content: 'gate quick start, minecraft proxy installation, gate setup guide, minecraft server proxy tutorial, bungeecord alternative setup, velocity replacement guide, minecraft network setup'
+  - - meta
+    - property: 'og:title'
+      content: 'Gate Minecraft Proxy Quick Start - Installation & Setup Guide'
+  - - meta
+    - property: 'og:description'
+      content: 'Quick start guide for Gate Minecraft proxy. Install, configure, and run your own BungeeCord/Velocity replacement with Bedrock cross-play in minutes.'
+  - - meta
+    - property: 'og:image'
+      content: 'https://gate.minekube.com/og-image.png'
+  - - meta
+    - property: 'og:url'
+      content: 'https://gate.minekube.com/guide/quick-start'
+  - - meta
+    - property: 'og:type'
+      content: 'article'
+  - - meta
+    - name: 'twitter:card'
+      content: 'summary_large_image'
+  - - meta
+    - name: 'twitter:title'
+      content: 'Gate Minecraft Proxy Quick Start - Installation & Setup Guide'
+  - - meta
+    - name: 'twitter:description'
+      content: 'Quick start guide for Gate Minecraft proxy. Install, configure, and run your own BungeeCord/Velocity replacement with Bedrock cross-play in minutes.'
+  - - meta
+    - name: 'twitter:image'
+      content: 'https://gate.minekube.com/og-image.png'
+  - - link
+    - rel: canonical
+      href: 'https://gate.minekube.com/guide/quick-start'
+---
+
 # Quick Start
 
 _This page quickly explains how to run Gate as a Minecraft proxy for your servers.
@@ -20,9 +63,12 @@ INFO	java	proxy/proxy.go:299	Using favicon from data uri	{"length": 3086}
 INFO	java	proxy/proxy.go:472	listening for connections	{"addr": "0.0.0.0:25565"}
 ```
 
-::: tip Running Gate Lite Mode
+::: tip Key Features
 
-Gate also has a [Lite mode](lite) that can passthrough connections based on the hostname.
+Gate supports:
+
+- **[Lite mode](lite)** - Lightweight reverse proxy for simple setups
+- **[Bedrock support](bedrock)** - Cross-play with mobile, console, and Windows players
 
 :::
 
@@ -44,6 +90,14 @@ There are many more options to configure, see [Configuration](/guide/config/) fo
 ## Next Steps
 
 <div class="next-steps">
+  <a href="/guide/bedrock" class="next-card" style="text-decoration: none;">
+    🎮 Bedrock Support
+    <span>Enable cross-play with mobile and console players</span>
+  </a>
+  <a href="/guide/lite" class="next-card" style="text-decoration: none;">
+    ⚡ Lite Mode
+    <span>Lightweight reverse proxy setup</span>
+  </a>
   <a href="/guide/config/" class="next-card" style="text-decoration: none;">
     📖 Configuration Guide
     <span>Learn about all configuration options</span>
@@ -51,10 +105,6 @@ There are many more options to configure, see [Configuration](/guide/config/) fo
   <a href="/developers/" class="next-card" style="text-decoration: none;">
     💻 Developer Guide
     <span>Extend Gate with custom code</span>
-  </a>
-  <a href="/guide/why" class="next-card" style="text-decoration: none;">
-    🎯 Why Gate?
-    <span>Learn about Gate's advantages</span>
   </a>
 </div>
 
