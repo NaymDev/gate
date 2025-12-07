@@ -125,9 +125,6 @@ func (j *EntityEquipment) Encode(c *proto.PacketContext, wr io.Writer) error {
 	if err := util.WriteInt16(wr, j.Slot); err != nil {
 		return err
 	}
-	if err := util.WriteInt16(wr, j.Item.ID); err != nil {
-		return err
-	}
 	return j.Item.encode(wr)
 }
 
