@@ -501,7 +501,7 @@ func (b *backendPlaySessionHandler) handleCookieRequest(p *cookie.CookieRequest)
 }
 
 func (b *backendPlaySessionHandler) handleEntityEquipment(p *packet.EntityEquipment) {
-	//p.Item.Normalize()
+	p.Item.Normalize()
 	b.serverConn.player.WritePacket(p)
 }
 
