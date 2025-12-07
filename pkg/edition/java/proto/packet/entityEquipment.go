@@ -20,7 +20,15 @@ type Slot struct {
 	ID         int16
 	ItemCount  byte
 	ItemDamage int16
-	NBT        map[string]interface{}
+	NBT        *SlotNBT
+}
+
+type SlotNBT struct {
+	Enchantments []struct {
+		ID    int16 `nbt:"id"`
+		Level int16 `nbt:"lvl"`
+	} `nbt:"ench"`
+	Unbreakable byte `nbt:"Unbreakable"`
 }
 
 func (s *Slot) encode(wr io.Writer) error {
@@ -43,7 +51,6 @@ func (s *Slot) encode(wr io.Writer) error {
 		return nil
 	}
 	enc := nbt.NewEncoder(wr)
-	enc.NetworkFormat(true)
 	if err := enc.Encode(s.NBT, ""); err != nil {
 		return err
 	}
@@ -81,9 +88,9 @@ func decodeSlot(rd io.Reader) (*Slot, error) {
 		return s, nil
 	}
 
+	s.NBT = &SlotNBT{}
 	dec := nbt.NewDecoder(br)
-	dec.NetworkFormat(true)
-	_, err = dec.Decode(&s.NBT)
+	_, err = dec.Decode(s.NBT)
 	if err != nil {
 		return nil, err
 	}
