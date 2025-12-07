@@ -332,6 +332,9 @@ func init() {
 		m(0x2C, version.Minecraft_1_21_2),
 		m(0x2B, version.Minecraft_1_21_5),
 	)
+	Play.ClientBound.Register(&p.EntityEquipment{},
+		m(0x04, version.Minecraft_1_7_2),
+	)
 	Play.ClientBound.Register(&p.Respawn{},
 		m(0x07, version.Minecraft_1_7_2),
 		m(0x33, version.Minecraft_1_9),
