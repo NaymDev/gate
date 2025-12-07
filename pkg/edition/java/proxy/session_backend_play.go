@@ -104,6 +104,8 @@ func (b *backendPlaySessionHandler) HandlePacket(pc *proto.PacketContext) {
 		b.handleCookieStore(p)
 	case *cookie.CookieRequest:
 		b.handleCookieRequest(p)
+	case *packet.EntityEquipment:
+		b.handleEntityEquipment(p)
 	default:
 		b.forwardToPlayer(pc, nil)
 	}
@@ -496,6 +498,11 @@ func (b *backendPlaySessionHandler) handleCookieRequest(p *cookie.CookieRequest)
 		return
 	}
 	forwardCookieRequest(e, b.serverConn.player)
+}
+
+func (b *backendPlaySessionHandler) handleEntityEquipment(p *packet.EntityEquipment) {
+	//p.Item.Normalize()
+	b.serverConn.player.WritePacket(p)
 }
 
 // prefer PacketContext over Packet

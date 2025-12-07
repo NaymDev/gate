@@ -31,7 +31,7 @@ type SlotNBT struct {
 	Unbreakable byte `nbt:"Unbreakable"`
 }
 
-func (s *Slot) normalize() {
+func (s *Slot) Normalize() {
 	if s.ID == -1 {
 		return
 	}
@@ -145,6 +145,5 @@ func (j *EntityEquipment) Decode(c *proto.PacketContext, rd io.Reader) (err erro
 		return err
 	}
 	j.Item = *item
-	j.Item.normalize()
 	return nil
 }
