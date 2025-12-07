@@ -31,6 +31,27 @@ type SlotNBT struct {
 	Unbreakable byte `nbt:"Unbreakable"`
 }
 
+func (s *Slot) normalize() {
+	if s.ID == -1 {
+		return
+	}
+
+	s.ItemCount = 1
+	s.ItemDamage = 0
+
+	if s.NBT == nil {
+		return
+	}
+	if len(s.NBT.Enchantments) > 0 {
+		s.NBT.Enchantments = []struct {
+			ID    int16 `nbt:"id"`
+			Level int16 `nbt:"lvl"`
+		}{
+			{ID: 1, Level: 1},
+		}
+	}
+}
+
 func (s *Slot) encode(wr io.Writer) error {
 	if err := util.WriteInt16(wr, s.ID); err != nil {
 		return err
@@ -124,5 +145,6 @@ func (j *EntityEquipment) Decode(c *proto.PacketContext, rd io.Reader) (err erro
 		return err
 	}
 	j.Item = *item
+	j.Item.normalize()
 	return nil
 }
