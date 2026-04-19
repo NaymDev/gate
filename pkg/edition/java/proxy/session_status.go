@@ -99,8 +99,7 @@ func newInitialPing(p *Proxy, protocol proto.Protocol) *ping.ServerPing {
 		Version: ping.Version{
 			Protocol: protocol,
 			Name:     vn,
-		},
-		Players: &ping.Players{
+ 		Players: &ping.Players{
 			Online: p.PlayerCount(),
 			Max:    p.cfg.Status.ShowMaxPlayers,
 		},
